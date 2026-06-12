@@ -119,7 +119,15 @@
   .mini-btn.fav { color: var(--gold); }
   .mini-btn.learned { color: #4C9A5E; }
 
-  /* ---------- 추가 패널 ---------- */
+  .edit-form { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .edit-input {
+    width: 100%; border: 1px solid var(--grape); border-radius: 8px;
+    padding: 9px 10px; font-size: 15px; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    background: #FDFBFF; color: var(--ink); resize: vertical;
+  }
+  .edit-actions { display: flex; gap: 6px; }
+  .edit-save { flex: 1; background: var(--grape); color: #fff; border-radius: 8px; padding: 9px 0; font-size: 13.5px; font-weight: 600; }
+  .edit-cancel { flex: 1; border: 1px solid var(--grape-line); border-radius: 8px; padding: 9px 0; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); background: #FBFAFD; }
   .panel-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
   .input {
     width: 100%; border: 1px solid #E2DCEE; border-radius: 10px;
@@ -192,6 +200,7 @@ let showFr = false;
 let filter = "all";    // all | favorite | learning | learned
 let query = "";
 let loaded = false;
+let editingId = null;  // 현재 편집 중인 문장 id
 
 const $ = (s) => document.querySelector(s);
 const view = $("#view");
@@ -323,29 +332,54 @@ function renderList() {
     <div class="filters">
       ${F.map(([k,l]) => `<button class="filter ${filter===k?"on":""}" data-f="${k}">${l}</button>`).join("")}
     </div>
-    ${ items.length ? items.map(s => `
-      <div class="s-item ${s.is_learned ? "learned" : ""}">
-        <p class="s-ko">${esc(s.ko)}</p>
-        <p class="s-fr">${esc(s.fr)}</p>
+    ${ items.length ? items.map(s => {
+      const isEditing = editingId === s.id;
+      return `
+      <div class="s-item ${s.is_learned ? "learned" : ""}" data-id="${s.id}">
+        ${isEditing ? `
+          <div class="edit-form">
+            <textarea class="edit-input" id="edit-ko-${s.id}" rows="2">${esc(s.ko)}</textarea>
+            <textarea class="edit-input" id="edit-fr-${s.id}" rows="2">${esc(s.fr)}</textarea>
+            <div class="edit-actions">
+              <button class="edit-save" data-act="save" data-id="${s.id}">저장</button>
+              <button class="edit-cancel" data-act="cancel" data-id="${s.id}">취소</button>
+            </div>
+          </div>
+        ` : `
+          <p class="s-ko">${esc(s.ko)}</p>
+          <p class="s-fr">${esc(s.fr)}</p>
+        `}
         <div class="s-meta">
           <span class="s-src">${esc(s.src || "")}</span>
           <button class="mini-btn ${s.is_favorite ? "fav" : ""}" data-act="fav" data-id="${s.id}">${s.is_favorite ? "★" : "☆"}</button>
           <button class="mini-btn ${s.is_learned ? "learned" : ""}" data-act="learn" data-id="${s.id}">✓</button>
+          <button class="mini-btn" data-act="edit" data-id="${s.id}" title="수정">✎</button>
           <button class="mini-btn" data-act="del" data-id="${s.id}">×</button>
         </div>
-      </div>`).join("")
+      </div>`;
+    }).join("")
     : `<p class="empty">조건에 맞는 문장이 없어요.</p>` }`;
 
   $("#search").oninput = (e) => { query = e.target.value; renderList(); };
   $("#search").focus(); // 검색 중 재렌더 시 포커스 유지
   $("#search").setSelectionRange(query.length, query.length);
   document.querySelectorAll(".filter").forEach(b => b.onclick = () => { filter = b.dataset.f; renderList(); });
-  document.querySelectorAll(".mini-btn").forEach(b => b.onclick = () => {
-    const s = sentences.find(x => x.id === b.dataset.id);
+  document.querySelectorAll(".mini-btn, .edit-save, .edit-cancel").forEach(b => b.onclick = async () => {
+    const id = b.dataset.id;
+    const s = sentences.find(x => x.id === id);
     if (!s) return;
-    if (b.dataset.act === "fav") patch(s.id, { is_favorite: !s.is_favorite });
-    if (b.dataset.act === "learn") patch(s.id, { is_learned: !s.is_learned });
-    if (b.dataset.act === "del" && confirm("이 문장을 삭제할까요?")) removeSentence(s.id);
+    if (b.dataset.act === "fav") patch(id, { is_favorite: !s.is_favorite });
+    if (b.dataset.act === "learn") patch(id, { is_learned: !s.is_learned });
+    if (b.dataset.act === "del" && confirm("이 문장을 삭제할까요?")) removeSentence(id);
+    if (b.dataset.act === "edit") { editingId = id; renderList(); }
+    if (b.dataset.act === "cancel") { editingId = null; renderList(); }
+    if (b.dataset.act === "save") {
+      const ko = document.getElementById(`edit-ko-${id}`)?.value.trim();
+      const fr = document.getElementById(`edit-fr-${id}`)?.value.trim();
+      if (!ko || !fr) { toast("한국어와 프랑스어를 모두 입력해주세요"); return; }
+      editingId = null;
+      await patch(id, { ko, fr });
+    }
   });
 }
 
