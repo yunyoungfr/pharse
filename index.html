@@ -206,8 +206,9 @@ const daySeed = D.getFullYear()*372 + D.getMonth()*31 + D.getDate();
 async function load() {
   if (!sb) { toast("Supabase 설정을 불러오지 못했어요"); return; }
   const { data, error } = await sb.from("sentences").select("*").order("created_at");
-  if (error) { toast("불러오기 실패: 설정의 URL/키를 확인하세요"); console.error(error); }
-  else { sentences = data || []; loaded = true; }
+  loaded = true;
+  if (error) { toast("불러오기 실패: " + error.message); console.error(error); }
+  else { sentences = data || []; }
   render();
 }
 
@@ -413,8 +414,8 @@ async function setUser(u) {
   document.querySelector(".tabbar").classList.toggle("hidden", !user);
   if (!user) { sentences = []; loaded = false; tab = "today"; renderAuth(); return; }
   if (changed || !loaded) {
-    // 로그인 전에 만들어진 주인 없는 시드 문장을 내 계정으로 가져오기 (1회성)
-    await sb.from("sentences").update({ user_id: user.id }).is("user_id", null);
+    // 마이그레이션이 완료된 경우에만 null 시드 문장 인계 시도
+    sb.from("sentences").update({ user_id: user.id }).is("user_id", null).then(() => {});
     load();
   }
 }
