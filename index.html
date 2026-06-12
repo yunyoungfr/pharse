@@ -152,18 +152,27 @@
   }
   .toast.show { opacity: .92; }
   .loading { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 0; }
+
+  /* ---------- 로그인 ---------- */
+  .auth-sub { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+  .auth-switch { display: block; width: 100%; text-align: center; margin-top: 14px; font-size: 13.5px; color: var(--grape); font-weight: 600; }
+  .auth-err { font-size: 13px; color: #C0392B; margin-top: 10px; line-height: 1.5; }
+  .logout-btn { font-size: 12px; color: var(--muted); font-weight: 600; margin-left: 10px; }
+  .tabbar.hidden { display: none; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="header">
     <h1>Une Phrase</h1>
-    <span class="date" id="dateLabel"></span>
+    <span>
+      <span class="date" id="dateLabel"></span><button class="logout-btn" id="logoutBtn" hidden>로그아웃</button>
+    </span>
   </div>
   <div id="view"></div>
 </div>
 
-<nav class="tabbar">
+<nav class="tabbar hidden">
   <button class="tab on" data-tab="today"><span class="ic">☀️</span>오늘</button>
   <button class="tab" data-tab="list"><span class="ic">📚</span>문장 목록</button>
   <button class="tab" data-tab="add"><span class="ic">✎</span>추가</button>
@@ -174,6 +183,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 let sb;
+let user = null;
+let authMode = "login"; // login | signup
 let sentences = [];
 let tab = "today";
 let offset = 0;        // ⟳ 수동 변경
@@ -236,6 +247,7 @@ function todaySentence() {
 function esc(t){ return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 function render() {
+  if (!user) { renderAuth(); return; }
   document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   if (!loaded) { view.innerHTML = `<p class="loading">불러오는 중…</p>`; return; }
   if (tab === "today") renderToday();
@@ -356,6 +368,59 @@ function renderAdd() {
   };
 }
 
+/* ----- 로그인 화면 ----- */
+function renderAuth(msg = "", isError = false) {
+  const isLogin = authMode === "login";
+  view.innerHTML = `
+    <div class="card">
+      <p class="panel-title">${isLogin ? "로그인" : "회원가입"}</p>
+      <p class="auth-sub">${isLogin
+        ? "어느 기기에서든 같은 계정으로 로그인하면<br>내 문장이 그대로 연동돼요."
+        : "이메일과 비밀번호(6자 이상)를 정해주세요.<br>이 계정으로 컴퓨터·핸드폰 어디서나 쓸 수 있어요."}</p>
+      <input class="input" id="emailIn" type="email" placeholder="이메일" autocomplete="email" />
+      <input class="input" id="pwIn" type="password" placeholder="비밀번호" autocomplete="${isLogin ? "current-password" : "new-password"}" />
+      <button class="add-btn" id="authBtn">${isLogin ? "로그인" : "가입하기"}</button>
+      ${msg ? `<p class="${isError ? "auth-err" : "note"}">${msg}</p>` : ""}
+      <button class="auth-switch" id="authSwitch">${isLogin ? "처음이세요? 회원가입" : "이미 계정이 있어요 → 로그인"}</button>
+    </div>`;
+
+  $("#authSwitch").onclick = () => { authMode = isLogin ? "signup" : "login"; renderAuth(); };
+  $("#authBtn").onclick = async () => {
+    const email = $("#emailIn").value.trim(), password = $("#pwIn").value;
+    if (!email || !password) { renderAuth("이메일과 비밀번호를 입력해주세요", true); return; }
+    $("#authBtn").disabled = true;
+    const { data, error } = isLogin
+      ? await sb.auth.signInWithPassword({ email, password })
+      : await sb.auth.signUp({ email, password });
+    if (error) {
+      const m = /invalid login/i.test(error.message) ? "이메일 또는 비밀번호가 맞지 않아요"
+        : /already registered/i.test(error.message) ? "이미 가입된 이메일이에요. 로그인해주세요"
+        : /at least 6/i.test(error.message) ? "비밀번호는 6자 이상이어야 해요"
+        : error.message;
+      renderAuth(m, true);
+    } else if (!isLogin && !data.session) {
+      authMode = "login";
+      renderAuth("확인 이메일을 보냈어요. 메일의 링크를 누른 뒤 로그인해주세요.");
+    }
+    // 세션이 생기면 onAuthStateChange가 화면을 전환합니다
+  };
+}
+
+async function setUser(u) {
+  const changed = u?.id !== user?.id;
+  user = u;
+  $("#logoutBtn").hidden = !user;
+  document.querySelector(".tabbar").classList.toggle("hidden", !user);
+  if (!user) { sentences = []; loaded = false; tab = "today"; renderAuth(); return; }
+  if (changed || !loaded) {
+    // 로그인 전에 만들어진 주인 없는 시드 문장을 내 계정으로 가져오기 (1회성)
+    await sb.from("sentences").update({ user_id: user.id }).is("user_id", null);
+    load();
+  }
+}
+
+$("#logoutBtn").onclick = () => sb && sb.auth.signOut();
+
 /* ----- 탭, 토스트 ----- */
 document.querySelectorAll(".tab").forEach(b => b.onclick = () => { tab = b.dataset.tab; showFr = false; render(); });
 let toastTimer;
@@ -378,7 +443,9 @@ function toast(msg) {
     view.innerHTML = `<p class="empty" style="color:#c0392b">⚠️ 서버 설정을 불러오지 못했어요.<br>Vercel 환경변수 SUPABASE_URL·SUPABASE_ANON_KEY를 확인하세요.</p>`;
     return;
   }
-  load();
+  sb.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
+  const { data: { session } } = await sb.auth.getSession();
+  setUser(session?.user ?? null);
 })();
 </script>
 </body>
