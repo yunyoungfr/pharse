@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Une Phrase · 오늘의 한 문장</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,600&family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #FDF9EF;
+    --card: #FFFFFF;
+    --ink: #2B2433;
+    --ink-soft: #4A3F5C;
+    --muted: #9B8BB8;
+    --faint: #C5BCD8;
+    --grape: #7C5CBF;
+    --grape-deep: #4A3294;
+    --grape-pale: #F7F3FB;
+    --grape-line: #EFE9E0;
+    --gold: #D9A441;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  button { cursor: pointer; font-family: inherit; border: none; background: none; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--grape); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  .wrap { max-width: 430px; margin: 0 auto; padding: 18px 14px 0; }
+
+  /* ---------- 헤더 ---------- */
+  .header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  .header h1 { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 600; font-style: italic; color: var(--grape-deep); }
+  .header .date { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+  /* ---------- 오늘 카드 ---------- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--grape-line);
+    border-radius: 18px;
+    padding: 18px 18px 14px;
+    box-shadow: 0 2px 14px rgba(60,40,90,0.08);
+  }
+  .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .eyebrow { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .icon-row { display: flex; gap: 6px; }
+  .icon-btn {
+    border: 1px solid #E5DFF0; background: #FBFAFD; border-radius: 10px;
+    width: 36px; height: 36px; font-size: 16px; color: var(--grape); line-height: 1;
+  }
+  .icon-btn.active { background: var(--grape-pale); border-color: var(--grape); }
+  .ko-main {
+    font-family: 'Gowun Batang', serif;
+    font-size: clamp(21px, 5.8vw, 25px);
+    font-weight: 700; line-height: 1.5; word-break: keep-all;
+    margin-bottom: 14px;
+  }
+  .fr-zone {
+    display: block; width: 100%; text-align: left;
+    background: var(--grape-pale); border-radius: 12px;
+    padding: 13px 14px; min-height: 50px; transition: background .15s;
+  }
+  .fr-zone.open { background: #F1ECFA; }
+  .fr-text {
+    font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600;
+    font-size: clamp(19px, 5.2vw, 22px); color: var(--grape-deep); line-height: 1.4;
+  }
+  .fr-text .g { color: #C9B8E8; font-style: normal; }
+  .fr-hint { font-size: 13.5px; color: #A99CC4; }
+  .card-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .chip-btn {
+    flex: 1; border: 1px solid var(--grape-line); border-radius: 10px;
+    padding: 11px 0; font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
+    background: #FBFAFD; transition: all .15s;
+  }
+  .chip-btn.on-fav { background: #FCF6E8; border-color: var(--gold); color: #9A6E1B; }
+  .chip-btn.on-learned { background: #EFF8F0; border-color: #6BAF7A; color: #3D7A4C; }
+  .src-row { display: flex; justify-content: space-between; margin-top: 10px; }
+  .src-row span { font-size: 12px; color: var(--faint); }
+  .empty { font-size: 15px; color: #8A7FA3; line-height: 1.6; padding: 8px 0; }
+
+  /* ---------- 통계 줄 ---------- */
+  .stats { display: flex; gap: 8px; margin-top: 12px; }
+  .stat {
+    flex: 1; background: var(--card); border: 1px solid var(--grape-line);
+    border-radius: 14px; padding: 12px 0; text-align: center;
+  }
+  .stat b { display: block; font-size: 20px; color: var(--grape-deep); }
+  .stat span { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+
+  /* ---------- 목록 ---------- */
+  .search {
+    width: 100%; border: 1px solid #E2DCEE; border-radius: 12px;
+    padding: 12px 14px; font-size: 16px; background: var(--card); margin-bottom: 10px;
+  }
+  .filters { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; }
+  .filter {
+    border: 1px solid var(--grape-line); border-radius: 99px;
+    padding: 7px 13px; font-size: 13px; font-weight: 600; color: var(--ink-soft);
+    background: var(--card); white-space: nowrap;
+  }
+  .filter.on { background: var(--grape); border-color: var(--grape); color: #fff; }
+  .s-item {
+    background: var(--card); border: 1px solid var(--grape-line); border-radius: 14px;
+    padding: 13px 14px; margin-bottom: 8px;
+  }
+  .s-item.learned { opacity: .62; }
+  .s-ko { font-size: 15px; font-weight: 600; line-height: 1.45; word-break: keep-all; }
+  .s-fr { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 16px; color: var(--grape-deep); margin-top: 3px; line-height: 1.4; }
+  .s-meta { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+  .s-src { font-size: 11.5px; color: var(--faint); margin-right: auto; }
+  .mini-btn { width: 34px; height: 34px; border-radius: 9px; font-size: 16px; color: var(--faint); }
+  .mini-btn.fav { color: var(--gold); }
+  .mini-btn.learned { color: #4C9A5E; }
+
+  /* ---------- 추가 패널 ---------- */
+  .panel-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .input {
+    width: 100%; border: 1px solid #E2DCEE; border-radius: 10px;
+    padding: 13px 12px; font-size: 16px; background: #FCFBFE; margin-bottom: 8px;
+  }
+  .add-btn {
+    width: 100%; border-radius: 10px; padding: 14px 0;
+    background: var(--grape); color: #fff; font-size: 15px; font-weight: 600;
+  }
+  .add-btn:disabled { opacity: .4; cursor: default; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+  /* ---------- 하단 탭 ---------- */
+  .tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(255,253,247,.96); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--grape-line);
+    display: flex; max-width: 430px; margin: 0 auto;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .tab { flex: 1; padding: 11px 0 9px; text-align: center; font-size: 11.5px; font-weight: 600; color: var(--faint); }
+  .tab .ic { display: block; font-size: 19px; margin-bottom: 2px; }
+  .tab.on { color: var(--grape-deep); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+    background: var(--ink); color: #fff; font-size: 13.5px;
+    padding: 10px 18px; border-radius: 99px; opacity: 0; transition: opacity .25s;
+    pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: .92; }
+  .loading { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>Une Phrase</h1>
+    <span class="date" id="dateLabel"></span>
+  </div>
+  <div id="view"></div>
+</div>
+
+<nav class="tabbar">
+  <button class="tab on" data-tab="today"><span class="ic">☀️</span>오늘</button>
+  <button class="tab" data-tab="list"><span class="ic">📚</span>문장 목록</button>
+  <button class="tab" data-tab="add"><span class="ic">✎</span>추가</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+let sb;
+let sentences = [];
+let tab = "today";
+let offset = 0;        // ⟳ 수동 변경
+let showFr = false;
+let filter = "all";    // all | favorite | learning | learned
+let query = "";
+let loaded = false;
+
+const $ = (s) => document.querySelector(s);
+const view = $("#view");
+
+/* ----- 날짜 ----- */
+const D = new Date();
+const JOURS = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+$("#dateLabel").textContent = `${D.getMonth()+1}월 ${D.getDate()}일 · ${JOURS[D.getDay()]}`;
+const daySeed = D.getFullYear()*372 + D.getMonth()*31 + D.getDate();
+
+/* ----- 데이터 ----- */
+async function load() {
+  if (!sb) { toast("Supabase 설정을 불러오지 못했어요"); return; }
+  const { data, error } = await sb.from("sentences").select("*").order("created_at");
+  if (error) { toast("불러오기 실패: 설정의 URL/키를 확인하세요"); console.error(error); }
+  else { sentences = data || []; loaded = true; }
+  render();
+}
+
+async function patch(id, fields) {
+  const i = sentences.findIndex(s => s.id === id);
+  if (i > -1) Object.assign(sentences[i], fields); // 낙관적 업데이트
+  render();
+  const { error } = await sb.from("sentences").update(fields).eq("id", id);
+  if (error) { toast("저장 실패, 다시 시도해주세요"); load(); }
+}
+
+async function addSentence(ko, fr) {
+  const { data, error } = await sb.from("sentences")
+    .insert({ ko, fr, src: "내 문장" }).select().single();
+  if (error) { toast("추가 실패"); return false; }
+  sentences.push(data);
+  toast("문장이 추가됐어요");
+  return true;
+}
+
+async function removeSentence(id) {
+  sentences = sentences.filter(s => s.id !== id);
+  render();
+  const { error } = await sb.from("sentences").delete().eq("id", id);
+  if (error) { toast("삭제 실패"); load(); }
+}
+
+/* ----- 오늘의 문장: 외운 문장 제외, 날짜 시드 ----- */
+function todaySentence() {
+  const pool = sentences.filter(s => !s.is_learned);
+  const base = pool.length ? pool : sentences;
+  if (!base.length) return null;
+  return base[(daySeed + offset) % base.length];
+}
+
+/* ----- 렌더 ----- */
+function esc(t){ return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function render() {
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  if (!loaded) { view.innerHTML = `<p class="loading">불러오는 중…</p>`; return; }
+  if (tab === "today") renderToday();
+  else if (tab === "list") renderList();
+  else renderAdd();
+}
+
+function renderToday() {
+  const s = todaySentence();
+  const favCount = sentences.filter(x => x.is_favorite).length;
+  const learnedCount = sentences.filter(x => x.is_learned).length;
+
+  view.innerHTML = `
+    <div class="card">
+      <div class="card-top">
+        <span class="eyebrow">La phrase du jour</span>
+        <div class="icon-row">
+          <button class="icon-btn" id="shuffle" title="다른 문장 보기">⟳</button>
+        </div>
+      </div>
+      ${ s ? `
+        <p class="ko-main">${esc(s.ko)}</p>
+        <button class="fr-zone ${showFr ? "open" : ""}" id="reveal">
+          ${ showFr
+            ? `<span class="fr-text"><span class="g">« </span>${esc(s.fr)}<span class="g"> »</span></span>`
+            : `<span class="fr-hint">🇫🇷 탭해서 프랑스어 보기</span>` }
+        </button>
+        <div class="card-actions">
+          <button class="chip-btn ${s.is_favorite ? "on-fav" : ""}" id="favBtn">
+            ${s.is_favorite ? "★ 즐겨찾기" : "☆ 즐겨찾기"}
+          </button>
+          <button class="chip-btn ${s.is_learned ? "on-learned" : ""}" id="learnBtn">
+            ${s.is_learned ? "✓ 외웠어요" : "외웠어요"}
+          </button>
+        </div>
+        <div class="src-row">
+          <span>${esc(s.src || "")}</span>
+          <span>학습 중 ${sentences.length - learnedCount}개</span>
+        </div>
+      ` : `<p class="empty">아직 문장이 없어요. 추가 탭에서 첫 문장을 넣어보세요.</p>` }
+    </div>
+    <div class="stats">
+      <div class="stat"><b>${sentences.length}</b><span>전체</span></div>
+      <div class="stat"><b>${favCount}</b><span>즐겨찾기</span></div>
+      <div class="stat"><b>${learnedCount}</b><span>외운 문장</span></div>
+    </div>`;
+
+  $("#shuffle").onclick = () => { offset++; showFr = false; render(); };
+  if (s) {
+    $("#reveal").onclick = () => { showFr = !showFr; render(); };
+    $("#favBtn").onclick = () => patch(s.id, { is_favorite: !s.is_favorite });
+    $("#learnBtn").onclick = () => {
+      patch(s.id, { is_learned: !s.is_learned });
+      if (!s.is_learned) toast("Bravo ! 내일은 새 문장이 나와요");
+    };
+  }
+}
+
+function renderList() {
+  let items = sentences;
+  if (filter === "favorite") items = items.filter(s => s.is_favorite);
+  if (filter === "learned") items = items.filter(s => s.is_learned);
+  if (filter === "learning") items = items.filter(s => !s.is_learned);
+  if (query.trim()) {
+    const q = query.trim().toLowerCase();
+    items = items.filter(s => s.ko.toLowerCase().includes(q) || s.fr.toLowerCase().includes(q));
+  }
+
+  const F = [["all","전체"],["learning","학습 중"],["favorite","★ 즐겨찾기"],["learned","✓ 외운 문장"]];
+  view.innerHTML = `
+    <input class="search" id="search" placeholder="한국어나 프랑스어로 검색" value="${esc(query)}" />
+    <div class="filters">
+      ${F.map(([k,l]) => `<button class="filter ${filter===k?"on":""}" data-f="${k}">${l}</button>`).join("")}
+    </div>
+    ${ items.length ? items.map(s => `
+      <div class="s-item ${s.is_learned ? "learned" : ""}">
+        <p class="s-ko">${esc(s.ko)}</p>
+        <p class="s-fr">${esc(s.fr)}</p>
+        <div class="s-meta">
+          <span class="s-src">${esc(s.src || "")}</span>
+          <button class="mini-btn ${s.is_favorite ? "fav" : ""}" data-act="fav" data-id="${s.id}">${s.is_favorite ? "★" : "☆"}</button>
+          <button class="mini-btn ${s.is_learned ? "learned" : ""}" data-act="learn" data-id="${s.id}">✓</button>
+          <button class="mini-btn" data-act="del" data-id="${s.id}">×</button>
+        </div>
+      </div>`).join("")
+    : `<p class="empty">조건에 맞는 문장이 없어요.</p>` }`;
+
+  $("#search").oninput = (e) => { query = e.target.value; renderList(); };
+  $("#search").focus(); // 검색 중 재렌더 시 포커스 유지
+  $("#search").setSelectionRange(query.length, query.length);
+  document.querySelectorAll(".filter").forEach(b => b.onclick = () => { filter = b.dataset.f; renderList(); });
+  document.querySelectorAll(".mini-btn").forEach(b => b.onclick = () => {
+    const s = sentences.find(x => x.id === b.dataset.id);
+    if (!s) return;
+    if (b.dataset.act === "fav") patch(s.id, { is_favorite: !s.is_favorite });
+    if (b.dataset.act === "learn") patch(s.id, { is_learned: !s.is_learned });
+    if (b.dataset.act === "del" && confirm("이 문장을 삭제할까요?")) removeSentence(s.id);
+  });
+}
+
+function renderAdd() {
+  view.innerHTML = `
+    <div class="card">
+      <p class="panel-title">새 문장 추가</p>
+      <input class="input" id="koIn" placeholder="한국어 뜻" />
+      <input class="input" id="frIn" placeholder="프랑스어 문장" />
+      <button class="add-btn" id="addBtn" disabled>추가하기</button>
+      <p class="note">수업이나 공부에서 만난 문장을 넣어두면, 매일 아침 '오늘' 탭에서 하나씩 복습할 수 있어요. 외운 문장으로 표시하면 오늘의 문장에서 제외됩니다.</p>
+    </div>`;
+  const ko = $("#koIn"), fr = $("#frIn"), btn = $("#addBtn");
+  const check = () => btn.disabled = !(ko.value.trim() && fr.value.trim());
+  ko.oninput = fr.oninput = check;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const ok = await addSentence(ko.value.trim(), fr.value.trim());
+    if (ok) { ko.value = ""; fr.value = ""; ko.focus(); }
+    check();
+  };
+}
+
+/* ----- 탭, 토스트 ----- */
+document.querySelectorAll(".tab").forEach(b => b.onclick = () => { tab = b.dataset.tab; showFr = false; render(); });
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+/* ----- 앱 진입점: 환경변수를 서버에서 가져온 뒤 초기화 ----- */
+(async () => {
+  try {
+    const res = await fetch("/api/config");
+    if (!res.ok) throw new Error(`config fetch failed: ${res.status}`);
+    const { url, anonKey } = await res.json();
+    sb = supabase.createClient(url, anonKey);
+  } catch (e) {
+    console.error(e);
+    view.innerHTML = `<p class="empty" style="color:#c0392b">⚠️ 서버 설정을 불러오지 못했어요.<br>Vercel 환경변수 SUPABASE_URL·SUPABASE_ANON_KEY를 확인하세요.</p>`;
+    return;
+  }
+  load();
+})();
+</script>
+</body>
+</html>
