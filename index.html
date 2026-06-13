@@ -448,8 +448,6 @@ async function setUser(u) {
   document.querySelector(".tabbar").classList.toggle("hidden", !user);
   if (!user) { sentences = []; loaded = false; tab = "today"; renderAuth(); return; }
   if (changed || !loaded) {
-    // 마이그레이션이 완료된 경우에만 null 시드 문장 인계 시도
-    sb.from("sentences").update({ user_id: user.id }).is("user_id", null).then(() => {});
     load();
   }
 }
